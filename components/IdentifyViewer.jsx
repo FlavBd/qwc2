@@ -55,7 +55,8 @@ class IdentifyViewer extends React.Component {
         resultTree: {},
         currentResult: null,
         currentLayer: null,
-        displayFieldMap: {}
+        displayFieldMap: {},
+        format: this.props.exportFormat
     }
     constructor(props) {
         super(props);
@@ -216,10 +217,10 @@ class IdentifyViewer extends React.Component {
         this.export(filteredResults);
     }
     export = (json) => {
-        if(this.props.exportFormat.toLowerCase() === 'json') {
+        if(this.state.format.toLowerCase() === 'json') {
             let data = JSON.stringify(json, null, ' ');
-            FileSaver.saveAs(new Blob([data], {type: "text/plain;charset=utf-8"}), "results.json");
-        } else if(this.props.exportFormat.toLowerCase() === 'csv') {
+            FileSaver.saveAs(new Blob([data], {type: "application/json;charset=utf-8"}), "results.json");
+        } else if(this.state.format.toLowerCase() === 'csv') {
             let csv = "";
             Object.entries(json).forEach(([layerName, features]) => {
                 csv += layerName + "\n";
@@ -430,6 +431,16 @@ class IdentifyViewer extends React.Component {
                     </div>
                     {attributes}
                     <div className="identify-buttonbox">
+                        {
+                            this.props.exportFormat ?
+                            (<div className="choose-export-output">
+                                <Message msgId="identify.exportformat" />
+                                <select value={this.state.format} onChange={ev => this.setState({format: ev.target.value})}>
+                                    <option value="json">JSON</option>
+                                    <option value="csv">CSV</option>
+                                </select>
+                            </div>) : null
+                        }
                         {this.props.exportFormat ? (<button className="button" onClick={this.exportResults}><Message msgId="identify.export" /></button>) : null}
                     </div>
                 </div>
@@ -452,7 +463,17 @@ class IdentifyViewer extends React.Component {
                             });
                         })}
                     </div>
-                    <div className="identify-buttonbox">
+                    <div className="identify-buttonbox" >
+                        {
+                            this.props.exportFormat ?
+                            (<div>
+                                <Message msgId="identify.exportformat" />
+                                <select value={this.state.format} onChange={ev => this.setState({format: ev.target.value})}>
+                                    <option value="json">JSON</option>
+                                    <option value="csv">CSV</option>
+                                </select>
+                            </div>) : null
+                        }
                         {this.props.exportFormat ? (<button className="button" onClick={this.exportResults}><Message msgId="identify.export" /></button>) : null}
                     </div>
                 </div>
@@ -463,7 +484,6 @@ class IdentifyViewer extends React.Component {
                 {body}
             </ResizeableWindow>
         );
-
     }
     collectFeatureReportTemplates = (entry) => {
         let reports = {};

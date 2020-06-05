@@ -24,6 +24,8 @@ const IdentifyUtils = require('../utils/IdentifyUtils');
 const LayerUtils = require('../utils/LayerUtils');
 const MiscUtils = require('../utils/MiscUtils');
 const Icon = require('./Icon');
+const JSZip = require('jszip');
+
 require('./style/IdentifyViewer.css');
 
 class IdentifyViewer extends React.Component {
@@ -220,7 +222,20 @@ class IdentifyViewer extends React.Component {
         if(this.state.format.toLowerCase() === 'json') {
             let data = JSON.stringify(json, null, ' ');
             FileSaver.saveAs(new Blob([data], {type: "application/json;charset=utf-8"}), "results.json");
-        } else if(this.state.format.toLowerCase() === 'csv') {
+        } else if(this.state.format.toLowerCase() === 'geojson') {
+            Object.entries(json).forEach(([layerName, features]) => {
+                let data = {
+                    "type":"FeatureCollection",
+                    "features":[]
+                };
+                let datageojson = {};
+                features.forEach(feature => {
+                    data.features = data.features.concat(feature);
+                    datageojson = JSON.stringify(data, null, ' ');
+                });
+                FileSaver.saveAs(new Blob([datageojson], {type: "application/geo+json;charset=utf-8"}), layerName + ".geojson");
+            })
+        }else if(this.state.format.toLowerCase() === 'csv') {
             let csv = "";
             Object.entries(json).forEach(([layerName, features]) => {
                 csv += layerName + "\n";
@@ -237,6 +252,55 @@ class IdentifyViewer extends React.Component {
                 csv += "\n";
             })
             FileSaver.saveAs(new Blob([csv], {type: "text/plain;charset=utf-8"}), "results.csv");
+        }else if(this.state.format.toLowerCase() === 'csv + zip') {
+            let first = true;
+            let file = 0 ;
+            let blobs = [];
+            let filenames = [];
+            Object.entries(json).forEach(([layerName, features]) => {
+                let csv = "";
+                file += 1;
+                if (first) {
+                    Object.entries(features[0].properties || {}).forEach(([attrib]) => {
+                        if(attrib !== "htmlContent") {
+                            csv += attrib  + ';' ;
+                        }
+                    });
+                    if(features[0].geometry) {
+                        csv += 'geometry';
+                    } else if(csv !== ""){
+                        csv = csv.slice(0, -1); // Remove trailling semi column ;
+                    }
+                    first = false;
+                    csv += '\n';
+                }
+                features.forEach(feature => {
+                    Object.entries(feature.properties || {}).forEach(([attrib, value]) => {
+                        csv += String(value).replace('"', '""') + ';';
+                    });
+                    if(feature.geometry) {
+                        csv += stringify(feature.geometry);
+                    } else if(csv !== ""){
+                        csv = csv.slice(0, -1); // Remove trailling semi column ;
+                    }
+                    csv += '\n';
+                });
+                first = false;
+                let blob = new Blob([csv], {type: "text/csv;charset=utf-8"});
+                blobs.push(blob);
+                filenames.push(layerName);
+            })
+            if (file > 1) {
+                let zip = new JSZip();
+                for (var i = 0; i < blobs.length; i++) {
+                    zip.file(filenames[i] + ".csv", blobs[i]);
+                }
+                zip.generateAsync({type:"blob"}).then(function (blob){
+                    saveAs(blob, "results.zip");
+                });
+            } else {
+                FileSaver.saveAs(blobs[0], filenames[0] + ".csv");
+            }
         }
     }
     resultDisplayName = (layer, result) => {
@@ -436,8 +500,10 @@ class IdentifyViewer extends React.Component {
                             (<div className="choose-export-output">
                                 <Message msgId="identify.exportformat" />
                                 <select value={this.state.format} onChange={ev => this.setState({format: ev.target.value})}>
-                                    <option value="json">JSON</option>
-                                    <option value="csv">CSV</option>
+                                    <option value="json">json</option>
+                                    <option value="geojson">geojson</option>
+                                    <option value="csv">csv</option>
+                                    <option value="csv + zip">csv + zip</option>
                                 </select>
                             </div>) : null
                         }
@@ -469,8 +535,10 @@ class IdentifyViewer extends React.Component {
                             (<div>
                                 <Message msgId="identify.exportformat" />
                                 <select value={this.state.format} onChange={ev => this.setState({format: ev.target.value})}>
-                                    <option value="json">JSON</option>
-                                    <option value="csv">CSV</option>
+                                    <option value="json">json</option>
+                                    <option value="geojson">geojson</option>
+                                    <option value="csv">csv</option>
+                                    <option value="csv + zip">csv + zip</option>
                                 </select>
                             </div>) : null
                         }

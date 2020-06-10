@@ -235,6 +235,7 @@ class IdentifyViewer extends React.Component {
                 });
                 FileSaver.saveAs(new Blob([datageojson], {type: "application/geo+json;charset=utf-8"}), layerName + ".geojson");
             })
+        }
         }else if(this.state.format.toLowerCase() === 'csv') {
             let csv = "";
             Object.entries(json).forEach(([layerName, features]) => {
